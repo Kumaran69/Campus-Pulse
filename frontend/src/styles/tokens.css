@@ -1,0 +1,44 @@
+:root {
+  /* --- Color: institutional trust (indigo) + campus warmth (marigold) --- */
+  --ink: #1B2A4A;          /* deep indigo-navy, primary surfaces/headers */
+  --ink-soft: #2E4066;     /* lighter indigo for cards on dark bg */
+  --paper: #F7F5F0;        /* warm off-white, main background */
+  --paper-raised: #FFFFFF; /* card surfaces on paper */
+  --marigold: #F4A93A;     /* signature accent - campus energy */
+  --marigold-deep: #D98C1F;
+  --sage: #6B9080;         /* low risk / success */
+  --terracotta: #C1443C;   /* high risk / danger, warm not alarmist */
+  --amber-warn: #D98C1F;   /* medium risk */
+  --slate: #2D3142;        /* body text */
+  --slate-soft: #6B7280;   /* secondary text */
+  --line: #E4E0D6;         /* hairline dividers on paper */
+  --line-dark: rgba(255,255,255,0.12);
+
+  /* --- Type --- */
+  --font-display: "Fraunces", Georgia, serif;
+  --font-body: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", monospace;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.75rem;
+  --text-2xl: 2.5rem;
+
+  /* --- Spacing --- */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+  --sp-7: 48px;
+  --sp-8: 64px;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+
+  --shadow-card: 0 1px 2px rgba(27,42,74,0.06), 0 4px 16px rgba(27,42,74,0.06);
+}

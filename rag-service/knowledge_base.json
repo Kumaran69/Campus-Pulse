@@ -1,0 +1,62 @@
+[
+  {
+    "id": "fees-1",
+    "question": "How do I pay my semester fees?",
+    "answer": "Semester fees can be paid through the Student Portal under Payments > Semester Fee. Net banking, UPI, and card payments are accepted. The due date for each semester is displayed on the portal dashboard 30 days in advance."
+  },
+  {
+    "id": "fees-2",
+    "question": "What happens if I miss the fee payment deadline?",
+    "answer": "A late fee of 2% per week applies after the deadline. If fees remain unpaid 30 days past the deadline, exam hall ticket generation is blocked. Contact the Accounts Office for installment options if you're facing difficulty."
+  },
+  {
+    "id": "attendance-1",
+    "question": "What is the minimum attendance required?",
+    "answer": "A minimum of 75% attendance per subject is required to be eligible to write semester exams. Students below 65% attendance are flagged for mandatory mentor counselling."
+  },
+  {
+    "id": "attendance-2",
+    "question": "Can I get condonation for low attendance?",
+    "answer": "Attendance condonation (down to 65%) is possible with a valid medical certificate or approved leave, submitted to the department HOD within 10 days of resuming classes."
+  },
+  {
+    "id": "exam-1",
+    "question": "When will the semester exam timetable be released?",
+    "answer": "The exam timetable is published on the Student Portal and department notice boards at least 2 weeks before exams begin. You'll also get a notification through Campus Copilot once it's live."
+  },
+  {
+    "id": "exam-2",
+    "question": "How do I apply for revaluation?",
+    "answer": "Revaluation requests can be submitted through the Student Portal within 7 days of results being announced, along with the prescribed fee per subject. Results are typically updated within 3 weeks."
+  },
+  {
+    "id": "placement-1",
+    "question": "How do I become eligible for campus placements?",
+    "answer": "Eligibility requires no active backlogs, minimum CGPA of 6.0 (varies by company), and a completed profile including an updated resume on Campus Pulse. Check the Placements tab for company-specific criteria."
+  },
+  {
+    "id": "placement-2",
+    "question": "How do I build or update my resume?",
+    "answer": "Go to Resume Builder in your Student Dashboard. Fill in your education, projects, and skills — the resume screener uses this data directly when TPOs shortlist candidates for a drive, so keep it updated."
+  },
+  {
+    "id": "library-1",
+    "question": "What are the library timings?",
+    "answer": "The central library is open from 8:30 AM to 8:00 PM on working days, and 9:00 AM to 1:00 PM on Saturdays. Students can borrow up to 4 books for 14 days using their college ID."
+  },
+  {
+    "id": "hostel-1",
+    "question": "How do I apply for hostel accommodation?",
+    "answer": "Hostel applications open at the start of each academic year through the Student Portal under Hostel > Apply. Allotment is based on distance from college and availability, with priority for first-year students."
+  },
+  {
+    "id": "scholarship-1",
+    "question": "What scholarships are available?",
+    "answer": "Merit scholarships (top 10% per department), government scheme scholarships, and need-based financial aid are available. Applications open in August each year — check the Scholarships section on the portal for eligibility."
+  },
+  {
+    "id": "mentor-1",
+    "question": "Who is my academic mentor and how do I reach them?",
+    "answer": "Your assigned faculty mentor is listed on your Student Dashboard under 'My Mentor'. You can message them directly through Campus Pulse or book an in-person slot during their published office hours."
+  }
+]
