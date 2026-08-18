@@ -33,6 +33,11 @@ UserSchema.methods.comparePassword = function (candidate) {
 UserSchema.methods.toSafeObject = function () {
   const obj = this.toObject();
   delete obj.password;
+  // Mongoose gives back `_id` (an ObjectId); the frontend and the JWT
+  // payload both use a plain string `id`. Normalizing it here means
+  // every place that reads `user.id` after login/register gets the
+  // right value, instead of each caller needing to know to convert it.
+  obj.id = obj._id.toString();
   return obj;
 };
 
