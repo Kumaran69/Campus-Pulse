@@ -43,7 +43,7 @@ router.post("/:userId/risk/compute", requireAuth, requireRole("faculty", "admin"
     const { userId } = req.params;
 
     // Students may only trigger a recompute for themselves.
-    if (req.user.role === "student" && req.user.id !== userId) {
+    if (req.user.role === "student" && String(req.user.id) !== String(userId))  {
       return res.status(403).json({ error: "Students can only view their own risk score" });
     }
 
@@ -74,7 +74,7 @@ router.post("/:userId/risk/compute", requireAuth, requireRole("faculty", "admin"
 // GET /api/students/:userId/risk/history
 router.get("/:userId/risk/history", requireAuth, requireRole("faculty", "admin", "student"), async (req, res) => {
   const { userId } = req.params;
-  if (req.user.role === "student" && req.user.id !== userId) {
+  if(req.user.role === "student" && String(req.user.id) !== String(userId)) {
     return res.status(403).json({ error: "Students can only view their own risk history" });
   }
   const history = await RiskRecord.find({ user: userId }).sort({ computedAt: -1 }).limit(20);
