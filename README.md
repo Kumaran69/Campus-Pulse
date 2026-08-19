@@ -125,6 +125,20 @@ Or register your own account from the login page and pick any role.
 
 ---
 
+## Security & hardening
+
+The backend includes:
+
+- **Helmet** — sets standard security headers (no `X-Powered-By`, sane defaults for the rest)
+- **Rate limiting** — 300 req/15min per IP on the whole API, tightened to 20 req/15min on `/api/auth` specifically to slow down credential-stuffing/brute-force attempts
+- **express-mongo-sanitize** — strips `$`-prefixed keys from request bodies, blocking NoSQL operator-injection payloads (e.g. `{"email": {"$ne": null}}`)
+- **express-validator** on every write route (register, login, resume updates, job postings, profile edits, chat messages) — bad input gets a clean `400` with field-level messages instead of reaching Mongoose or crashing a route
+- **Consistent error handling** — every route is wrapped in `asyncHandler` so a rejected promise reaches the centralized error handler instead of hanging the request; 500 errors never leak stack traces to the client (full detail still goes to server logs)
+- **Audit logging** — every view of a student's risk score/history, the faculty Risk Radar, a resume by non-owners, and each resume-screener run writes an `AuditLog` entry (who, what, when). Admins can pull the trail via `GET /api/analytics/audit-logs`
+- **Request logging** — `morgan` logs every request (method, path, status, timing) to stdout, visible via `docker compose logs backend`
+
+None of this is a substitute for a real security review before handling actual student data — see "Natural next steps for a real pilot" below for what's still missing (HTTPS termination, secrets management, dependency scanning in CI).
+
 ## What's implemented vs. what's next
 
 **Working end-to-end today:**
