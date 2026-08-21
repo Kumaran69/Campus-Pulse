@@ -8,11 +8,13 @@ const mongoSanitize = require("express-mongo-sanitize");
 const connectDB = require("./config/db");
 
 const authRoutes = require("./routes/auth");
+const collegeRoutes = require("./routes/colleges");
 const studentRoutes = require("./routes/students");
 const resumeRoutes = require("./routes/resumes");
 const jobRoutes = require("./routes/jobs");
 const chatRoutes = require("./routes/chat");
 const analyticsRoutes = require("./routes/analytics");
+const privacyRoutes = require("./routes/privacy");
 
 const app = express();
 
@@ -50,15 +52,18 @@ const authLimiter = rateLimit({
   message: { error: "Too many login/register attempts. Please try again in a few minutes." },
 });
 app.use("/api/auth", authLimiter);
+app.use("/api/colleges", authLimiter);
 
 app.get("/health", (req, res) => res.json({ status: "ok", service: "campus-pulse-backend" }));
 
 app.use("/api/auth", authRoutes);
+app.use("/api/colleges", collegeRoutes);
 app.use("/api/students", studentRoutes);
 app.use("/api/resumes", resumeRoutes);
 app.use("/api/jobs", jobRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/analytics", analyticsRoutes);
+app.use("/api/privacy", privacyRoutes);
 
 // Catches any /api/* request that didn't match a route above.
 app.use("/api", (req, res) => {

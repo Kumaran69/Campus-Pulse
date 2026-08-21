@@ -20,7 +20,7 @@ const jobValidators = [
   body("requiredSkills.*").optional().isString().trim().isLength({ max: 60 }),
 ];
 
-// POST /api/jobs — TPO creates a job posting
+// POST /api/jobs — TPO creates a job posting, scoped to their own college
 router.post(
   "/",
   requireAuth,
@@ -31,6 +31,7 @@ router.post(
     const { title, company, description, requiredSkills } = req.body;
     const job = await JobPosting.create({
       postedBy: req.user.id,
+      college: req.user.collegeId,
       title,
       company,
       description,
@@ -40,13 +41,15 @@ router.post(
   })
 );
 
-// GET /api/jobs — anyone logged in can browse active postings (students apply, TPO manages)
+// GET /api/jobs — active postings for the caller's own college only
 router.get("/", requireAuth, asyncHandler(async (req, res) => {
-  const jobs = await JobPosting.find({ isActive: true }).sort({ createdAt: -1 });
+  const jobs = await JobPosting.find({ isActive: true, college: req.user.collegeId }).sort({ createdAt: -1 });
   res.json({ jobs });
 }));
 
-// GET /api/jobs/:jobId/screen — TPO ranks every student resume against this JD
+// GET /api/jobs/:jobId/screen — TPO ranks every student resume *in their own
+// college* against this JD. Cross-tenant guard prevents a TPO from one
+// college screening students that belong to a different one.
 router.get(
   "/:jobId/screen",
   requireAuth,
@@ -55,10 +58,10 @@ router.get(
   handleValidation,
   audit("resume.screen"),
   asyncHandler(async (req, res) => {
-    const job = await JobPosting.findById(req.params.jobId);
-    if (!job) return res.status(404).json({ error: "Job posting not found" });
+    const job = await JobPosting.findOne({ _id: req.params.jobId, college: req.user.collegeId });
+    if (!job) return res.status(404).json({ error: "Job posting not found in your college" });
 
-    const resumes = await Resume.find({ rawText: { $exists: true, $ne: "" } }).populate("user", "name rollNumber department year");
+    const resumes = await Resume.find({ college: req.user.collegeId, rawText: { $exists: true, $ne: "" } }).populate("user", "name rollNumber department year");
     if (resumes.length === 0) {
       return res.json({ job, rankings: [] });
     }

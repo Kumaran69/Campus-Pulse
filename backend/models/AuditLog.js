@@ -11,6 +11,7 @@ const AuditLogSchema = new mongoose.Schema(
   {
     actor: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     actorRole: { type: String, required: true },
+    college: { type: mongoose.Schema.Types.ObjectId, ref: "College", required: true, index: true },
     action: { type: String, required: true }, // e.g. "risk.view", "risk.compute", "resume.view"
     targetUser: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     metadata: { type: mongoose.Schema.Types.Mixed },
@@ -19,5 +20,6 @@ const AuditLogSchema = new mongoose.Schema(
 );
 
 AuditLogSchema.index({ targetUser: 1, createdAt: -1 });
+AuditLogSchema.index({ college: 1, createdAt: -1 });
 
 module.exports = mongoose.model("AuditLog", AuditLogSchema);

@@ -1,17 +1,21 @@
 const express = require("express");
 const axios = require("axios");
+const multer = require("multer");
+const { parse } = require("csv-parse/sync");
 const { body, param } = require("express-validator");
 const requireAuth = require("../middleware/auth");
 const requireRole = require("../middleware/role");
 const asyncHandler = require("../middleware/asyncHandler");
 const audit = require("../middleware/audit");
 const { handleValidation } = require("../middleware/validate");
+const { sendMail } = require("../utils/mailer");
 const User = require("../models/User");
 const StudentProfile = require("../models/StudentProfile");
 const RiskRecord = require("../models/RiskRecord");
 
 const router = express.Router();
 const ML_SERVICE_URL = process.env.ML_SERVICE_URL || "http://localhost:8001";
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 2 * 1024 * 1024 } });
 
 const profileUpdateValidators = [
   param("userId").isMongoId().withMessage("Invalid student id"),
@@ -29,8 +33,7 @@ router.get("/me/profile", requireAuth, requireRole("student"), asyncHandler(asyn
   res.json({ profile });
 }));
 
-// PUT /api/students/:userId/profile — faculty/admin normally update this via bulk import;
-// exposed here too so the demo is self-contained without a separate ingestion job.
+// PUT /api/students/:userId/profile — faculty/admin editing one student manually.
 router.put(
   "/:userId/profile",
   requireAuth,
@@ -38,9 +41,15 @@ router.put(
   profileUpdateValidators,
   handleValidation,
   asyncHandler(async (req, res) => {
+    // Confirm the target student is actually in the caller's college —
+    // without this, a faculty account from College A could edit a
+    // student's data at College B just by guessing/enumerating IDs.
+    const targetUser = await User.findOne({ _id: req.params.userId, college: req.user.collegeId, role: "student" });
+    if (!targetUser) return res.status(404).json({ error: "Student not found in your college" });
+
     const { attendancePercent, averageGrade, assignmentsCompletedPercent, backlogs, lmsLoginsPerWeek } = req.body;
     const profile = await StudentProfile.findOneAndUpdate(
-      { user: req.params.userId },
+      { user: targetUser._id },
       {
         $set: {
           ...(attendancePercent !== undefined && { attendancePercent }),
@@ -51,9 +60,74 @@ router.put(
           lastUpdated: new Date(),
         },
       },
-      { new: true, upsert: true }
+      { new: true }
     );
     res.json({ profile });
+  })
+);
+
+// POST /api/students/bulk-import — faculty/admin upload a CSV of attendance,
+// grades, and engagement signals to update many students in one pass instead
+// of editing each profile by hand. Expected columns: rollNumber,
+// attendancePercent, averageGrade, assignmentsCompletedPercent, backlogs, lmsLoginsPerWeek
+router.post(
+  "/bulk-import",
+  requireAuth,
+  requireRole("faculty", "admin"),
+  upload.single("file"),
+  asyncHandler(async (req, res) => {
+    if (!req.file) return res.status(400).json({ error: "Attach a CSV file under the 'file' field" });
+
+    let records;
+    try {
+      records = parse(req.file.buffer.toString("utf-8"), { columns: true, skip_empty_lines: true, trim: true });
+    } catch (err) {
+      return res.status(400).json({ error: "Could not parse CSV file", detail: err.message });
+    }
+
+    if (records.length > 2000) {
+      return res.status(400).json({ error: "CSV has too many rows (max 2000 per import)" });
+    }
+
+    const results = { updated: 0, skipped: [] };
+    const numericField = (raw, min, max) => {
+      const n = Number(raw);
+      if (Number.isNaN(n)) return undefined;
+      return Math.min(Math.max(n, min), max);
+    };
+
+    for (const row of records) {
+      const rollNumber = (row.rollNumber || "").trim();
+      if (!rollNumber) {
+        results.skipped.push({ row, reason: "Missing rollNumber" });
+        continue;
+      }
+
+      const student = await User.findOne({ rollNumber, college: req.user.collegeId, role: "student" });
+      if (!student) {
+        results.skipped.push({ row, reason: `No student found with roll number ${rollNumber} in your college` });
+        continue;
+      }
+
+      const update = {};
+      const attendancePercent = numericField(row.attendancePercent, 0, 100);
+      const averageGrade = numericField(row.averageGrade, 0, 100);
+      const assignmentsCompletedPercent = numericField(row.assignmentsCompletedPercent, 0, 100);
+      const backlogs = numericField(row.backlogs, 0, 50);
+      const lmsLoginsPerWeek = numericField(row.lmsLoginsPerWeek, 0, 100);
+
+      if (attendancePercent !== undefined) update.attendancePercent = attendancePercent;
+      if (averageGrade !== undefined) update.averageGrade = averageGrade;
+      if (assignmentsCompletedPercent !== undefined) update.assignmentsCompletedPercent = assignmentsCompletedPercent;
+      if (backlogs !== undefined) update.backlogs = backlogs;
+      if (lmsLoginsPerWeek !== undefined) update.lmsLoginsPerWeek = lmsLoginsPerWeek;
+      update.lastUpdated = new Date();
+
+      await StudentProfile.findOneAndUpdate({ user: student._id }, { $set: update }, { upsert: true });
+      results.updated += 1;
+    }
+
+    res.json(results);
   })
 );
 
@@ -72,6 +146,10 @@ router.post(
     if (req.user.role === "student" && String(req.user.id) !== String(userId)) {
       return res.status(403).json({ error: "Students can only view their own risk score" });
     }
+
+    // Cross-tenant guard: the target student must exist in the caller's college.
+    const targetUser = await User.findOne({ _id: userId, college: req.user.collegeId, role: "student" });
+    if (!targetUser) return res.status(404).json({ error: "Student not found in your college" });
 
     const profile = await StudentProfile.findOne({ user: userId });
     if (!profile) return res.status(404).json({ error: "Student profile not found" });
@@ -92,10 +170,20 @@ router.post(
 
     const record = await RiskRecord.create({
       user: userId,
+      college: req.user.collegeId,
       riskScore: data.risk_score,
       riskLevel: data.risk_level,
       topFactors: data.top_factors,
     });
+
+    // Best-effort notification — never blocks or fails the response.
+    if (data.risk_level === "high") {
+      sendMail({
+        to: targetUser.email,
+        subject: "Your academic risk status needs attention",
+        text: `Hi ${targetUser.name}, your latest Campus Pulse check-in flagged you as high risk. Top contributing factors: ${data.top_factors.map((f) => f.factor).join(", ")}. Please reach out to your faculty mentor or your department's student support desk. — Campus Pulse`,
+      }).catch(() => {});
+    }
 
     res.json({ record });
   })
@@ -114,19 +202,20 @@ router.get(
     if (req.user.role === "student" && String(req.user.id) !== String(userId)) {
       return res.status(403).json({ error: "Students can only view their own risk history" });
     }
-    const history = await RiskRecord.find({ user: userId }).sort({ computedAt: -1 }).limit(20);
+    const history = await RiskRecord.find({ user: userId, college: req.user.collegeId }).sort({ computedAt: -1 }).limit(20);
     res.json({ history });
   })
 );
 
-// GET /api/students/radar — faculty dashboard: every student ranked by latest risk score
+// GET /api/students/radar — faculty dashboard: every student in the caller's
+// college, ranked by latest risk score.
 router.get(
   "/radar",
   requireAuth,
   requireRole("faculty", "admin"),
   audit("risk.radar_view"),
   asyncHandler(async (req, res) => {
-    const students = await User.find({ role: "student" }).select("-password");
+    const students = await User.find({ role: "student", college: req.user.collegeId }).select("-password");
 
     const rows = await Promise.all(
       students.map(async (student) => {
@@ -142,7 +231,6 @@ router.get(
       })
     );
 
-    // Highest risk first so faculty see who needs attention at the top.
     rows.sort((a, b) => (b.latestRisk?.riskScore || 0) - (a.latestRisk?.riskScore || 0));
 
     res.json({ rows });

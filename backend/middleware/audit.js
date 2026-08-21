@@ -12,6 +12,7 @@ function audit(action) {
     AuditLog.create({
       actor: req.user.id,
       actorRole: req.user.role,
+      college: req.user.collegeId,
       action,
       targetUser: req.params.userId || req.user.id,
       metadata: { path: req.originalUrl, method: req.method },

@@ -7,6 +7,7 @@ const mongoose = require("mongoose");
 const RiskRecordSchema = new mongoose.Schema(
   {
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true },
+    college: { type: mongoose.Schema.Types.ObjectId, ref: "College", required: true, index: true },
     riskScore: { type: Number, min: 0, max: 1, required: true }, // probability of academic risk
     riskLevel: { type: String, enum: ["low", "medium", "high"], required: true },
     topFactors: [{ factor: String, contribution: Number }], // explainability

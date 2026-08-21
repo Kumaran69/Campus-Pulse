@@ -6,6 +6,7 @@ const asyncHandler = require("../middleware/asyncHandler");
 const audit = require("../middleware/audit");
 const { handleValidation } = require("../middleware/validate");
 const Resume = require("../models/Resume");
+const User = require("../models/User");
 
 const router = express.Router();
 
@@ -38,7 +39,7 @@ router.put(
 
     const resume = await Resume.findOneAndUpdate(
       { user: req.user.id },
-      { $set: { fullName, headline, summary, skills, education, experience, projects } },
+      { $set: { fullName, headline, summary, skills, education, experience, projects, college: req.user.collegeId } },
       { new: true, upsert: true, setDefaultsOnInsert: true }
     );
 
@@ -55,6 +56,9 @@ router.get(
   handleValidation,
   audit("resume.view"),
   asyncHandler(async (req, res) => {
+    const targetUser = await User.findOne({ _id: req.params.userId, college: req.user.collegeId });
+    if (!targetUser) return res.status(404).json({ error: "Student not found in your college" });
+
     const resume = await Resume.findOne({ user: req.params.userId });
     if (!resume) return res.status(404).json({ error: "Resume not found for this student" });
     res.json({ resume });

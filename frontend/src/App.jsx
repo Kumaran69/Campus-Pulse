@@ -10,6 +10,7 @@ import FacultyDashboard from "./pages/FacultyDashboard";
 import TpoJobsPage from "./pages/TpoJobsPage";
 import TpoScreenerPage from "./pages/TpoScreenerPage";
 import AdminDashboard from "./pages/AdminDashboard";
+import PrivacyPage from "./pages/PrivacyPage";
 
 function RootRedirect() {
   const { user } = useAuth();
@@ -36,6 +37,8 @@ export default function App() {
           <Route path="/tpo/screen" element={<ProtectedRoute allow={["tpo", "admin"]}><TpoScreenerPage /></ProtectedRoute>} />
 
           <Route path="/admin" element={<ProtectedRoute allow={["admin"]}><AdminDashboard /></ProtectedRoute>} />
+
+          <Route path="/privacy" element={<ProtectedRoute allow={["student", "faculty", "tpo", "admin"]}><PrivacyPage /></ProtectedRoute>} />
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import DashboardLayout from "../components/DashboardLayout";
 import client from "../api/client";
 
@@ -7,6 +7,9 @@ export default function FacultyDashboard() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
   const [error, setError] = useState("");
+  const [importResult, setImportResult] = useState(null);
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef(null);
 
   const load = async () => {
     setLoading(true);
@@ -25,6 +28,29 @@ export default function FacultyDashboard() {
   const computeFor = async (userId) => {
     await client.post(`/students/${userId}/risk/compute`);
     load();
+  };
+
+  const handleCsvUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImporting(true);
+    setImportResult(null);
+    setError("");
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const { data } = await client.post("/students/bulk-import", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      setImportResult(data);
+      load();
+    } catch (err) {
+      setError(err.response?.data?.error || "Could not import that CSV. Check the format and try again.");
+    } finally {
+      setImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
   };
 
   const filtered = rows.filter((r) => filter === "all" || r.latestRisk?.riskLevel === filter);
@@ -48,6 +74,33 @@ export default function FacultyDashboard() {
         <Stat label="Medium risk" value={counts.medium} color="var(--amber-warn)" />
         <Stat label="Low risk" value={counts.low} color="var(--sage)" />
         <Stat label="Not yet scored" value={counts.unscored} color="var(--slate-soft)" />
+      </div>
+
+      <div className="card" style={{ marginBottom: 24 }}>
+        <div className="section-title">Bulk update attendance & grades</div>
+        <p style={{ fontSize: "0.875rem", color: "var(--slate-soft)", marginBottom: 12 }}>
+          Upload a CSV with columns: <code className="mono">rollNumber, attendancePercent, averageGrade, assignmentsCompletedPercent, backlogs, lmsLoginsPerWeek</code>.
+          Only students already registered at your college will be updated — unmatched roll numbers are reported back.
+        </p>
+        <input ref={fileInputRef} type="file" accept=".csv" onChange={handleCsvUpload} disabled={importing} />
+        {importing && <p className="hint" style={{ marginTop: 8 }}>Importing...</p>}
+        {importResult && (
+          <div style={{ marginTop: 12, fontSize: "0.875rem" }}>
+            <p style={{ color: "var(--sage)", fontWeight: 600 }}>Updated {importResult.updated} student{importResult.updated === 1 ? "" : "s"}.</p>
+            {importResult.skipped.length > 0 && (
+              <details style={{ marginTop: 8 }}>
+                <summary style={{ cursor: "pointer", color: "var(--terracotta)" }}>
+                  {importResult.skipped.length} row{importResult.skipped.length === 1 ? "" : "s"} skipped
+                </summary>
+                <ul style={{ marginTop: 8, paddingLeft: 20 }}>
+                  {importResult.skipped.slice(0, 20).map((s, i) => (
+                    <li key={i} className="hint">{s.reason}</li>
+                  ))}
+                </ul>
+              </details>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="card">

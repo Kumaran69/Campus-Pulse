@@ -8,6 +8,7 @@ const mongoose = require("mongoose");
 const StudentProfileSchema = new mongoose.Schema(
   {
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, unique: true },
+    college: { type: mongoose.Schema.Types.ObjectId, ref: "College", required: true, index: true },
     attendancePercent: { type: Number, min: 0, max: 100, default: 85 },
     averageGrade: { type: Number, min: 0, max: 100, default: 70 }, // 0-100 scale
     assignmentsCompletedPercent: { type: Number, min: 0, max: 100, default: 90 },

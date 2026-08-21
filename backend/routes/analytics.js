@@ -9,21 +9,26 @@ const RiskRecord = require("../models/RiskRecord");
 const Resume = require("../models/Resume");
 const JobPosting = require("../models/JobPosting");
 const AuditLog = require("../models/AuditLog");
+const College = require("../models/College");
 
 const router = express.Router();
 
-// GET /api/analytics/overview — admin-only institution health snapshot
+// GET /api/analytics/overview — admin-only institution health snapshot,
+// scoped to the admin's own college.
 router.get("/overview", requireAuth, requireRole("admin"), asyncHandler(async (req, res) => {
-  const [studentCount, facultyCount, tpoCount, resumeCount, jobCount] = await Promise.all([
-    User.countDocuments({ role: "student" }),
-    User.countDocuments({ role: "faculty" }),
-    User.countDocuments({ role: "tpo" }),
-    Resume.countDocuments({}),
-    JobPosting.countDocuments({ isActive: true }),
+  const collegeId = req.user.collegeId;
+
+  const [studentCount, facultyCount, tpoCount, resumeCount, jobCount, college] = await Promise.all([
+    User.countDocuments({ role: "student", college: collegeId }),
+    User.countDocuments({ role: "faculty", college: collegeId }),
+    User.countDocuments({ role: "tpo", college: collegeId }),
+    Resume.countDocuments({ college: collegeId }),
+    JobPosting.countDocuments({ isActive: true, college: collegeId }),
+    College.findById(collegeId),
   ]);
 
-  // Latest risk record per student, bucketed by level.
   const latestPerStudent = await RiskRecord.aggregate([
+    { $match: { college: college?._id } },
     { $sort: { computedAt: -1 } },
     { $group: { _id: "$user", riskLevel: { $first: "$riskLevel" }, riskScore: { $first: "$riskScore" } } },
   ]);
@@ -34,6 +39,7 @@ router.get("/overview", requireAuth, requireRole("admin"), asyncHandler(async (r
   });
 
   res.json({
+    college: college ? { name: college.name, code: college.code } : null,
     counts: { students: studentCount, faculty: facultyCount, tpo: tpoCount, resumes: resumeCount, activeJobs: jobCount },
     riskBuckets,
     resumeCompletionRate: studentCount > 0 ? Math.round((resumeCount / studentCount) * 100) : 0,
@@ -41,7 +47,7 @@ router.get("/overview", requireAuth, requireRole("admin"), asyncHandler(async (r
 }));
 
 // GET /api/analytics/audit-logs — admin-only view into who accessed sensitive
-// student data (risk scores, resumes, screener runs) and when.
+// student data within their own college.
 router.get(
   "/audit-logs",
   requireAuth,
@@ -50,7 +56,7 @@ router.get(
   handleValidation,
   asyncHandler(async (req, res) => {
     const limit = parseInt(req.query.limit, 10) || 50;
-    const logs = await AuditLog.find({})
+    const logs = await AuditLog.find({ college: req.user.collegeId })
       .sort({ createdAt: -1 })
       .limit(limit)
       .populate("actor", "name email role")

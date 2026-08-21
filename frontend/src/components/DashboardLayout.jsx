@@ -20,8 +20,8 @@ const NAV_BY_ROLE = {
 };
 
 export default function DashboardLayout({ children }) {
-  const { user, logout } = useAuth();
-  const links = NAV_BY_ROLE[user?.role] || [];
+  const { user, college, logout } = useAuth();
+  const links = [...(NAV_BY_ROLE[user?.role] || []), { to: "/privacy", label: "My Data & Privacy" }];
   const initials = (user?.name || "?")
     .split(" ")
     .map((p) => p[0])
@@ -39,6 +39,11 @@ export default function DashboardLayout({ children }) {
           </svg>
           <span className="name">Campus Pulse</span>
         </div>
+        {college?.name && (
+          <div style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.55)", marginBottom: 4, marginTop: -16, lineHeight: 1.3 }}>
+            {college.name}
+          </div>
+        )}
         <div className="sidebar-role">{user?.role} view</div>
 
         <nav>
@@ -46,7 +51,7 @@ export default function DashboardLayout({ children }) {
             <NavLink
               key={l.to}
               to={l.to}
-              end={l.to === "/student" || l.to === "/faculty" || l.to === "/tpo" || l.to === "/admin"}
+              end={["/student", "/faculty", "/tpo", "/admin"].includes(l.to)}
               className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}
             >
               {l.label}

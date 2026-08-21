@@ -11,10 +11,16 @@ const UserSchema = new mongoose.Schema(
       enum: ["student", "faculty", "tpo", "admin"],
       default: "student",
     },
+    // Tenant boundary — every query that touches student data must be
+    // scoped to this, so one college can never see another's records.
+    college: { type: mongoose.Schema.Types.ObjectId, ref: "College", required: true, index: true },
     // Student-only convenience fields, kept here for fast lookups.
     rollNumber: { type: String, trim: true },
     department: { type: String, trim: true },
     year: { type: Number, min: 1, max: 5 },
+    // Basic consent trail — what the person agreed to and when, at signup.
+    consentGiven: { type: Boolean, default: false },
+    consentAt: { type: Date },
   },
   { timestamps: true }
 );
@@ -38,6 +44,7 @@ UserSchema.methods.toSafeObject = function () {
   // every place that reads `user.id` after login/register gets the
   // right value, instead of each caller needing to know to convert it.
   obj.id = obj._id.toString();
+  if (obj.college) obj.collegeId = obj.college.toString();
   return obj;
 };
 
